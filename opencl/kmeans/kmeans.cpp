@@ -18,12 +18,13 @@
 	}
 #endif
 
-
+extern "C" {
 #ifdef NV 
 	#include <oclUtils.h>
 #else
-	#include <CL/cl.h>
+	#include <CL/opencl.h>
 #endif
+}
 
 #ifndef FLT_MAX
 #define FLT_MAX 3.40282347e+38

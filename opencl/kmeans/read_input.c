@@ -218,7 +218,8 @@ int setup(int argc, char **argv) {
 	
 	printf("\nI/O completed\n");
 	printf("\nNumber of objects: %d\n", npoints);
-	printf("Number of features: %d\n", nfeatures);	
+	printf("Number of features per object, dim: %d\n", nfeatures);
+	printf("Number of clusters, K or C: min=%d, max=%d\n", min_nclusters, max_nclusters);
 	/* ============== I/O end ==============*/
 
 	// error check for clusters
