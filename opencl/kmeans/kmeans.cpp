@@ -183,7 +183,7 @@ int main( int argc, char** argv)
 
 }
 
-int	kmeansOCL(float **feature,    /* in: [npoints][nfeatures] */
+extern "C" int	kmeansOCL(float **feature,    /* in: [npoints][nfeatures] */
            int     n_features,
            int     n_points,
            int     n_clusters,
