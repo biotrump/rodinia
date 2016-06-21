@@ -19,10 +19,10 @@
 #endif
 
 
-#ifdef NV 
+#ifdef NV
 	#include <oclUtils.h>
 #else
-	#include <CL/cl.h>
+	#include <CL/cl.hpp>
 #endif
 
 #ifndef FLT_MAX
@@ -52,7 +52,7 @@ static int initialize(int use_gpu)
 	// get the list of GPUs
 	result = clGetContextInfo( context, CL_CONTEXT_DEVICES, 0, NULL, &size );
 	num_devices = (int) (size / sizeof(cl_device_id));
-	
+
 	if( result != CL_SUCCESS || num_devices < 1 ) { printf("ERROR: clGetContextInfo() failed\n"); return -1; }
 	device_list = new cl_device_id[num_devices];
 	if( !device_list ) { printf("ERROR: new cl_device_id[] failed\n"); return -1; }
@@ -102,16 +102,16 @@ int allocate(int n_points, int n_features, int n_clusters, float **feature)
 {
 
 	int sourcesize = 1024*1024;
-	char * source = (char *)calloc(sourcesize, sizeof(char)); 
+	char * source = (char *)calloc(sourcesize, sizeof(char));
 	if(!source) { printf("ERROR: calloc(%d) failed\n", sourcesize); return -1; }
 
 	// read the kernel core source
 	char * tempchar = "./kmeans.cl";
-	FILE * fp = fopen(tempchar, "rb"); 
+	FILE * fp = fopen(tempchar, "rb");
 	if(!fp) { printf("ERROR: unable to open '%s'\n", tempchar); return -1; }
 	fread(source + strlen(source), sourcesize, 1, fp);
 	fclose(fp);
-		
+
 	// OpenCL initialization
 	int use_gpu = 1;
 	if(initialize(use_gpu)) return -1;
@@ -130,17 +130,17 @@ int allocate(int n_points, int n_features, int n_clusters, float **feature)
 	//	if(err || strstr(log,"warning:") || strstr(log, "error:")) printf("<<<<\n%s\n>>>>\n", log);
 	}
 	if(err != CL_SUCCESS) { printf("ERROR: clBuildProgram() => %d\n", err); return -1; }
-	
+
 	char * kernel_kmeans_c  = "kmeans_kernel_c";
-	char * kernel_swap  = "kmeans_swap";	
-		
-	kernel_s = clCreateKernel(prog, kernel_kmeans_c, &err);  
+	char * kernel_swap  = "kmeans_swap";
+
+	kernel_s = clCreateKernel(prog, kernel_kmeans_c, &err);
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateKernel() 0 => %d\n", err); return -1; }
-	kernel2 = clCreateKernel(prog, kernel_swap, &err);  
+	kernel2 = clCreateKernel(prog, kernel_swap, &err);
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateKernel() 0 => %d\n", err); return -1; }
-		
-	clReleaseProgram(prog);	
-	
+
+	clReleaseProgram(prog);
+
 	d_feature = clCreateBuffer(context, CL_MEM_READ_WRITE, n_points * n_features * sizeof(float), NULL, &err );
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer d_feature (size:%d) => %d\n", n_points * n_features, err); return -1;}
 	d_feature_swap = clCreateBuffer(context, CL_MEM_READ_WRITE, n_points * n_features * sizeof(float), NULL, &err );
@@ -149,20 +149,20 @@ int allocate(int n_points, int n_features, int n_clusters, float **feature)
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer d_cluster (size:%d) => %d\n", n_clusters * n_features, err); return -1;}
 	d_membership = clCreateBuffer(context, CL_MEM_READ_WRITE, n_points * sizeof(int), NULL, &err );
 	if(err != CL_SUCCESS) { printf("ERROR: clCreateBuffer d_membership (size:%d) => %d\n", n_points, err); return -1;}
-		
+
 	//write buffers
 	err = clEnqueueWriteBuffer(cmd_queue, d_feature, 1, 0, n_points * n_features * sizeof(float), feature[0], 0, 0, 0);
 	if(err != CL_SUCCESS) { printf("ERROR: clEnqueueWriteBuffer d_feature (size:%d) => %d\n", n_points * n_features, err); return -1; }
-	
+
 	clSetKernelArg(kernel2, 0, sizeof(void *), (void*) &d_feature);
 	clSetKernelArg(kernel2, 1, sizeof(void *), (void*) &d_feature_swap);
 	clSetKernelArg(kernel2, 2, sizeof(cl_int), (void*) &n_points);
 	clSetKernelArg(kernel2, 3, sizeof(cl_int), (void*) &n_features);
-	
+
 	size_t global_work[3] = { n_points, 1, 1 };
 	err = clEnqueueNDRangeKernel(cmd_queue, kernel2, 1, NULL, global_work, NULL, 0, 0, 0);
 	if(err != CL_SUCCESS) { printf("ERROR: clEnqueueNDRangeKernel()=>%d failed\n", err); return -1; }
-	
+
 	membership_OCL = (int*) malloc(n_points * sizeof(int));
 }
 
@@ -177,7 +177,7 @@ void deallocateMemory()
 }
 
 
-int main( int argc, char** argv) 
+int main( int argc, char** argv)
 {
 	setup(argc, argv);
 
@@ -190,20 +190,20 @@ int	kmeansOCL(float **feature,    /* in: [npoints][nfeatures] */
            int    *membership,
 		   float **clusters,
 		   int     *new_centers_len,
-           float  **new_centers)	
+           float  **new_centers)
 {
-  
+
 	int delta = 0;
 	int i, j, k;
 	cl_int err = 0;
-	
-	size_t global_work[3] = { n_points, 1, 1 }; 
-	
+
+	size_t global_work[3] = { n_points, 1, 1 };
+
 	err = clEnqueueWriteBuffer(cmd_queue, d_cluster, 1, 0, n_clusters * n_features * sizeof(float), clusters[0], 0, 0, 0);
 	if(err != CL_SUCCESS) { printf("ERROR: clEnqueueWriteBuffer d_cluster (size:%d) => %d\n", n_points, err); return -1; }
 
 	int size = 0; int offset = 0;
-					
+
 	clSetKernelArg(kernel_s, 0, sizeof(void *), (void*) &d_feature_swap);
 	clSetKernelArg(kernel_s, 1, sizeof(void *), (void*) &d_cluster);
 	clSetKernelArg(kernel_s, 2, sizeof(void *), (void*) &d_membership);
@@ -218,7 +218,7 @@ int	kmeansOCL(float **feature,    /* in: [npoints][nfeatures] */
 	clFinish(cmd_queue);
 	err = clEnqueueReadBuffer(cmd_queue, d_membership, 1, 0, n_points * sizeof(int), membership_OCL, 0, 0, 0);
 	if(err != CL_SUCCESS) { printf("ERROR: Memcopy Out\n"); return -1; }
-	
+
 	delta = 0;
 	for (i = 0; i < n_points; i++)
 	{
